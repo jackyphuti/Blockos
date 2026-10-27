@@ -399,6 +399,14 @@ static bool acpi_power_value(
 
 } // namespace
 
+static inline bool guid_equal(const EFI_GUID* a, const EFI_GUID* b)
+{
+    if (!a || !b) return false;
+    const uint64_t* p1 = reinterpret_cast<const uint64_t*>(a);
+    const uint64_t* p2 = reinterpret_cast<const uint64_t*>(b);
+    return (p1[0] == p2[0]) && (p1[1] == p2[1]);
+}
+
 bool init(EFI_SYSTEM_TABLE* system_table)
 {
     if (!system_table)
@@ -456,11 +464,11 @@ bool init(EFI_SYSTEM_TABLE* system_table)
         EFI_CONFIGURATION_TABLE& entry =
             system_table->ConfigurationTable[i];
 
-        if (CompareGuid(
+        if (guid_equal(
                 &entry.VendorGuid,
                 &acpi20
             ) ||
-            CompareGuid(
+            guid_equal(
                 &entry.VendorGuid,
                 &acpi10
             )) {

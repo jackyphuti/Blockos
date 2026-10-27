@@ -28,6 +28,7 @@
 #include "fs/vfs_blk_adapter.hpp"
 #include "net/net.hpp"
 #include "drivers/uefi_smp.hpp"
+#include "gui.hpp"
 
 extern "C"
 {
@@ -53,7 +54,7 @@ extern "C"
 
 static inline void early_serial_out(char c)
 {
-    asm volatile("outb %0, $0x3F8" : : "a"(c));
+    asm volatile("outb %0, %1" : : "a"(c), "Nd"((uint16_t)0x3F8));
 }
 
 static void early_serial_str(const char* s)
@@ -970,6 +971,14 @@ static void draw_splash(
  * ============================================================
  */
 
+static inline bool guid_equal(const EFI_GUID* a, const EFI_GUID* b)
+{
+    if (!a || !b) return false;
+    const uint64_t* p1 = reinterpret_cast<const uint64_t*>(a);
+    const uint64_t* p2 = reinterpret_cast<const uint64_t*>(b);
+    return (p1[0] == p2[0]) && (p1[1] == p2[1]);
+}
+
 static const acpi::Rsdp* find_uefi_rsdp(EFI_SYSTEM_TABLE* table)
 {
     if (!table)
@@ -991,8 +1000,8 @@ static const acpi::Rsdp* find_uefi_rsdp(EFI_SYSTEM_TABLE* table)
     {
         EFI_CONFIGURATION_TABLE& entry = table->ConfigurationTable[i];
 
-        if (CompareGuid(&entry.VendorGuid, &acpi20) ||
-            CompareGuid(&entry.VendorGuid, &acpi10))
+        if (guid_equal(&entry.VendorGuid, &acpi20) ||
+            guid_equal(&entry.VendorGuid, &acpi10))
         {
             return reinterpret_cast<const acpi::Rsdp*>(entry.VendorTable);
         }
@@ -1594,16 +1603,14 @@ extern "C" EFI_STATUS efi_main(
              * backbuffer, so simply breaking out of the loop would leave
              * the last splash frame visible on the GOP framebuffer.
              */
-            bb_clear(
-                (uint8_t*) backbuf,
-                fb.Width,
-                fb.Height,
-                0x00000000);
-
-            bb_blit_to_fb(
-                &fb,
-                (const uint8_t*) backbuf);
-
+            /*
+             * Launch 90s graphical workstation desktop:
+             * Initialized on the UEFI GOP linear framebuffer backbuffer,
+             * claims display ownership to prevent console text overwrite.
+             */
+            desktop.init(&fb, (uint8_t*) backbuf, fb.Width, fb.Height);
+            blockos_display_claim();
+            desktop.run_desktop();
             break;
         }
 

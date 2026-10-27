@@ -628,7 +628,7 @@ bool speaker_beep(
      * diagnostic path; HDA is the primary device.
      */
     for (uint64_t i = 0;
-         i < uint64_t(milliseconds) * 200000ULL;
+         i < uint64_t(milliseconds) * 15000ULL;
          ++i) {
 
         __asm__ volatile("pause");

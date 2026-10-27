@@ -206,4 +206,4 @@ exec qemu-system-x86_64 \
     -device isa-debug-exit \
     -serial stdio \
     -boot order=c \
-    -display gtk
+    -display "${QEMU_DISPLAY:-gtk}" 
